@@ -1,13 +1,28 @@
 # app/engine/engine.py
 import os
+import random
 import pygame
 from gtts import gTTS
 import time
 import speech_recognition as sr
 from app.api import APIHandler
+from app.utils import engine_check
 import logging
+import json
+import sys
 
-logging.basicConfig(level=logging.INFO)
+# Configuração de logging com UTF-8
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[logging.StreamHandler()],
+    encoding='utf-8'
+)
+
+# Verifica se o terminal suporta UTF-8
+if sys.stdout.encoding.lower() != 'utf-8':
+    print("Aviso: O terminal pode não suportar UTF-8. Verifique sua configuração.")
+
 
 class Engine:
     def __init__(self, name, user_name):
@@ -16,11 +31,20 @@ class Engine:
         self.api_handler = APIHandler()
         pygame.mixer.init()
         logging.info("Engine inicializado com o nome da assistente: %s e nome do usuário: %s", self.name, self.user_name)
+        self.responses = self.load_responses()
 
         # Cria a pasta temp na raiz do projeto, se não existir
         self.temp_folder = os.path.join(os.getcwd(), 'temp')
         if not os.path.exists(self.temp_folder):
             os.makedirs(self.temp_folder)
+    
+    def load_responses(self):
+        try:
+            with open('app/engine/keywords.json', 'r', encoding='utf-8') as file:
+                return json.load(file)
+        except Exception as e:
+            logging.error(f"Erro ao carregar respostas do JSON: {e}")
+            return {}
 
     def engine_speak(self, text):
         logging.info("Iniciando engine_speak com o texto: %s", text)
@@ -87,44 +111,41 @@ class Engine:
 
     def engine_response(self, user_input):
         logging.info("Processando entrada do usuário: %s", user_input)
-        if user_input:
-            user_input = user_input.lower()
+        user_input = user_input.lower()
+        
+        # Busca por palavras-chave no JSON
+        for category, entries in self.responses.items():
+            for entry in entries:
+                if any(keyword in user_input for keyword in entry['keywords']):
+                    response = random.choice(entry['responses'])
+                    self.engine_speak(response)
+                    return
 
-            if "wikipedia" in user_input:
-                query = user_input.replace("wikipedia", "").strip()
-                logging.info("Busca no Wikipedia com o termo: %s", query)
-                result = self.api_handler.fetch_wikipedia_info(query)
-                logging.info("Resultado da busca na Wikipedia: %s", result)
-                self.engine_speak(result)
+        # Integração com funcionalidades adicionais
+        if "toca" in user_input:
+            song_name = user_input.replace("toca", "").strip()
+            response = self.api_handler.play_music(song_name)
+            self.engine_speak(response)
+            return
 
-            elif "traduz" in user_input:
-                text_to_translate = user_input.replace("traduz", "").strip()
-                logging.info("Texto a traduzir: %s", text_to_translate)
-                translated_text = self.api_handler.translate(text_to_translate)
-                logging.info("Resultado da tradução: %s", translated_text)
-                self.engine_speak(f"A tradução é: {translated_text}")
+        if "pesquisa" in user_input:
+            query = user_input.replace("pesquisa", "").strip()
+            response = self.api_handler.google_search(query)
+            self.engine_speak(response)
+            return
 
-            elif "toca" in user_input:
-                song_name = user_input.replace("toca", "").strip()
-                logging.info("Música a ser tocada: %s", song_name)
-                music_message = self.api_handler.play_music(song_name)
-                logging.info("Música encontrada: %s", music_message)
-                self.engine_speak(music_message)
-                
-            elif "pesquisa" in user_input or "chat gpt" in user_input:
-                term_prompt = user_input.replace("pesquisa", "").replace("chat gpt", "").strip()
-                logging.info("Pesquisa ou interação com o GPT com o termo: %s", term_prompt)
-                response = self.api_handler.chat_with_gpt(term_prompt)
-                logging.info("Resposta do ChatGPT: %s", response)
-                self.engine_speak(response)
+        if "traduz" in user_input:
+            text_to_translate = user_input.replace("traduz", "").strip()
+            response = self.api_handler.translate(text_to_translate)
+            self.engine_speak(f"Tradução: {response}")
+            return
 
-            else:
-                self.engine_speak(f"Você disse: {user_input}")
-                
-            if "sair" in user_input or "desligar" in user_input:
-                self.engine_speak("Encerrando o sistema. Até mais!")
-                logging.info("Sistema sendo encerrado")
-                pygame.quit()
-                exit()
-
-            logging.info("Aguardando próxima entrada do usuário...")
+        if "wikipedia" in user_input:
+            query = user_input.replace("wikipedia", "").strip()
+            response = self.api_handler.fetch_wikipedia_info(query)
+            self.engine_speak(response)
+            return
+        
+        # Se não encontrar palavras-chave, usa ChatGPT
+        chatgpt_response = self.api_handler.chat_with_gpt(user_input)
+        self.engine_speak(chatgpt_response)

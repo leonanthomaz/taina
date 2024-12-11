@@ -1,0 +1,18 @@
+{
+    "greetings": [
+        {
+            "keywords": ["oi", "olá", "bom dia"],
+            "responses": ["Oi! Como posso ajudar?", "Olá! Em que posso ser útil hoje?", "Bom dia! O que gostaria de fazer agora?"]
+        },
+        {
+            "keywords": ["boa tarde", "boa noite"],
+            "responses": ["Boa tarde!", "Boa noite! Espero que esteja bem. Como posso ajudar?"]
+        }
+    ],
+    "farewells": [
+        {
+            "keywords": ["tchau", "adeus", "até mais"],
+            "responses": ["Até logo!", "Tchau! Tenha um ótimo dia!", "Até a próxima!"]
+        }
+    ]
+}

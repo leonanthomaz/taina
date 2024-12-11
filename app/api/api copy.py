@@ -3,85 +3,86 @@ import wikipedia
 import webbrowser
 from translatepy import Translator
 import yt_dlp
-import logging
-from dotenv import load_dotenv
 import openai
 import os
+import logging
+from dotenv import load_dotenv
 
 # Carrega as variáveis do arquivo .env
 load_dotenv()
-
-openai.api_key = os.getenv("OPENAI_API_KEY")
-logging.info(f"CHAVE CHATGPT: {openai.api_key}")
 
 class APIHandler:
     def __init__(self):
         wikipedia.set_lang('pt')
         self.openai_api_key = os.getenv("OPENAI_API_KEY")
         openai.api_key = self.openai_api_key
-        
+    
     def chat_with_gpt(self, prompt):
         try:
-            response = openai.completions.create(
-                model="gpt-4",  # Ou qualquer modelo que você queira usar
-                prompt=prompt,  # Passando o prompt diretamente
-                max_tokens=150
+            response = openai.ChatCompletion.create(
+                model="gpt-3.5-turbo",
+                messages=[{"role": "user", "content": prompt}]
             )
-            logging.info(f"RESPOSTA CHATGPT: {response}")
-            return response['choices'][0]['text'].strip()  # Acessando a resposta correta
+            return response['choices'][0]['message']['content'].strip()
         except Exception as e:
             logging.error(f"Erro ao se comunicar com o ChatGPT: {e}")
             return "Desculpe, ocorreu um erro ao processar sua solicitação."
-    
+
     def fetch_wikipedia_info(self, query):
+        """
+        Busca informações na Wikipedia.
+        """
         try:
-            response = wikipedia.summary(query, sentences=2)
-            logging.info(f"RESPOSTA WIKIPEDIA: {response}")
-            return response
+            return wikipedia.summary(query, sentences=2)
         except wikipedia.exceptions.DisambiguationError:
             return f"Há várias opções para '{query}'. Pode ser mais específico?"
         except wikipedia.exceptions.PageError:
             return f"Não encontrei informações sobre '{query}'."
         except Exception as e:
-            logging.error(f"Erro na Wikipedia: {e}")
+            print(f"Erro na Wikipedia: {e}")
             return "Desculpe, houve um problema com a Wikipedia."
 
-    def play_music(self, song_name):
+    def play_music(song_name):
         try:
             ydl_opts = {
                 'format': 'bestaudio/best',
+                'quiet': True,
+                'extractaudio': True,
                 'postprocessors': [{
                     'key': 'FFmpegExtractAudio',
                     'preferredcodec': 'mp3',
                     'preferredquality': '192',
-                }],
-                'quiet': True
+                }]
             }
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(f"ytsearch:{song_name}", download=False)
                 url = info['entries'][0]['webpage_url']
                 webbrowser.open(url)
-                logging.info(f"MUSICA TOCANDO: {song_name}")
-                return f"Tocando música: {song_name}"
+                return f"Reproduzindo {song_name} no YouTube."
         except Exception as e:
-            logging.error(f"Erro ao reproduzir música: {e}")
-            return "Desculpe, ocorreu um problema ao reproduzir a música."
+            logging.error(f"Erro ao tentar reproduzir música: {e}")
+            return "Desculpe, não consegui reproduzir a música."
 
-    def google_search(self, query):
+
+    def google_search(query):
+        """
+        Realiza pesquisa no Google.
+        """
         try:
             webbrowser.open(f"https://www.google.com/search?q={query}")
-            logging.info(f"TERMO PESQUISADO: {query}")
             return f"Buscando por: {query}"
         except Exception as e:
-            logging.error(f"Erro ao pesquisar no Google: {e}")
+            print(f"Erro ao pesquisar no Google: {e}")
             return "Desculpe, houve um problema ao abrir o navegador."
 
-    def translate(self, text):
+    def translate(text, target_language='en'):
+        """
+        Traduz texto para o idioma alvo.
+        """
+        translator = Translator()
         try:
-            translator = Translator()
-            translation = translator.translate(text, destination_language='pt')
-            logging.info(f"TRADUÇÃO: {translation.result}")
-            return translation.result
+            translated = translator.translate(text, destination_language=target_language)
+            return translated.result
         except Exception as e:
-            logging.error(f"Erro ao traduzir texto: {e}")
-            return "Desculpe, houve um problema ao tentar traduzir o texto."
+            print(f"Erro na tradução: {e}")
+            return "Desculpe, ocorreu um problema na tradução."
