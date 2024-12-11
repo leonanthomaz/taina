@@ -6,7 +6,6 @@ import time
 import speech_recognition as sr
 from app.api import APIHandler
 from app.utils import engine_check
-import tempfile
 import logging
 
 logging.basicConfig(level=logging.INFO)
@@ -19,11 +18,26 @@ class Engine:
         pygame.mixer.init()
         logging.info("Engine inicializado com o nome da assistente: %s e nome do usuário: %s", self.name, self.user_name)
 
+        # Cria a pasta temp na raiz do projeto, se não existir
+        self.temp_folder = os.path.join(os.getcwd(), 'temp')
+        if not os.path.exists(self.temp_folder):
+            os.makedirs(self.temp_folder)
+
     def engine_speak(self, text):
         logging.info("Iniciando engine_speak com o texto: %s", text)
-        temp_dir = tempfile.gettempdir()
-        temp_audio_path = os.path.join(temp_dir, f"temp_{int(time.time())}.mp3")
 
+        # Tenta inicializar o pygame mixer se não estiver já inicializado
+        try:
+            if not pygame.mixer.get_init():
+                pygame.mixer.init()
+                logging.info("pygame.mixer inicializado.")
+        except pygame.error as e:
+            logging.error("Falha ao inicializar o pygame mixer: %s", e)
+            return
+
+        # Salva o arquivo de áudio temporário na pasta temp do projeto
+        temp_audio_path = os.path.join(self.temp_folder, f"temp_{int(time.time())}.mp3")
+        
         try:
             tts = gTTS(text=text, lang='pt', slow=False)
             tts.save(temp_audio_path)
@@ -36,27 +50,32 @@ class Engine:
                 pygame.time.Clock().tick(10)
 
         finally:
-            if os.path.exists(temp_audio_path):
-                try:
+            # Quando o áudio terminar, pare o mixer corretamente
+            pygame.mixer.music.stop()
+            pygame.mixer.quit()
+
+            try:
+                # Verifica se o arquivo existe antes de tentar excluir
+                if os.path.exists(temp_audio_path):
                     os.remove(temp_audio_path)
                     logging.info("Arquivo de áudio temporário removido: %s", temp_audio_path)
-                except PermissionError:
-                    logging.error("Falha ao remover o arquivo de áudio temporário: %s", temp_audio_path)
+            except Exception as e:
+                logging.error("Erro ao tentar remover o arquivo de áudio temporário: %s", e)
 
     def engine_record_audio(self, prompt):
         logging.info("Iniciando engine_record_audio com o prompt: %s", prompt)
         self.engine_speak(prompt)
         recognizer = sr.Recognizer()
-        
+
         with sr.Microphone(device_index=0) as source:
             logging.info("Ajustando ambiente do microfone...")
             recognizer.adjust_for_ambient_noise(source, duration=2)
 
             logging.info("Esperando entrada do usuário...")
             print("Dispositivos de entrada disponíveis:", sr.Microphone.list_microphone_names())
-            
+
             try:
-                audio = recognizer.listen(source, timeout=3, phrase_time_limit=7)
+                audio = recognizer.listen(source, timeout=5, phrase_time_limit=10)  # Aumentei o timeout e o limite de tempo
                 logging.info("Áudio capturado com sucesso")
                 return recognizer.recognize_google(audio, language="pt-BR")
             except sr.WaitTimeoutError:
@@ -104,7 +123,3 @@ class Engine:
                 self.engine_speak(f"Você disse: {user_input}")
 
             logging.info("Aguardando próxima entrada do usuário...")
-    
-    def engine_check(keywords, text):
-        logging.debug("Verificando palavras-chave: %s no texto: %s", keywords, text)
-        return any(keyword in text for keyword in keywords)
