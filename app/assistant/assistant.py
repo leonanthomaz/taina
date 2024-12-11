@@ -30,13 +30,6 @@ class Assistant:
                     print(f"Entrada recebida: {user_input}")
                     # Responder ao usuário
                     self.engine.engine_response(user_input)
-                    
-                    # Se o comando for para sair, marque a flag de parada
-                    if "sair" in user_input or "desligar" in user_input:
-                        self.stop()  # Método para parar o loop
-
+                
                 else:
                     print("Nada foi reconhecido.")
-
-    def stop(self):
-        self.should_stop = True  # Muda a flag para parar o loop

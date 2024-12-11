@@ -1,7 +1,6 @@
 # app/engine/engine.py
 import os
 import random
-import sys
 import pygame
 from gtts import gTTS
 import time
@@ -20,9 +19,6 @@ class Engine:
         pygame.mixer.init()
         logging.info("Engine inicializado com o nome da assistente: %s e nome do usuário: %s", self.name, self.user_name)
 
-        # Inicializando self.actions como False
-        self.actions = False     
-           
         # Cria a pasta temp na raiz do projeto, se não existir
         self.temp_folder = os.path.join(os.getcwd(), 'temp')
         if not os.path.exists(self.temp_folder):
@@ -77,10 +73,10 @@ class Engine:
             recognizer.adjust_for_ambient_noise(source, duration=2)
 
             logging.info("Esperando entrada do usuário...")
-            # print("Dispositivos de entrada disponíveis:", sr.Microphone.list_microphone_names())
+            print("Dispositivos de entrada disponíveis:", sr.Microphone.list_microphone_names())
 
             try:
-                audio = recognizer.listen(source, timeout=10, phrase_time_limit=15)
+                audio = recognizer.listen(source, timeout=5, phrase_time_limit=10)  # Aumentei o timeout e o limite de tempo
                 logging.info("Áudio capturado com sucesso")
                 return recognizer.recognize_google(audio, language="pt-BR")
             except sr.WaitTimeoutError:
@@ -95,7 +91,6 @@ class Engine:
         """
         Responde à entrada de voz com base nas palavras-chave detectadas.
         """
-        logging.info("Analisando prompt: %s", prompt)
         actions = {
             'saudacao': {
                 'keywords': ['bom dia', 'boa tarde', 'boa noite', 'oi', 'olá', 'hello'],
@@ -134,42 +129,43 @@ class Engine:
                 'responses': ['Desligando o sistema...'],
             },
             'tocar_musica': {
-                'keywords': ['toque', 'pedrada', 'toca'],
+                'keywords': ['toque', 'pedrada', 'hino'],
                 'action': lambda song: self.api_handler.play_music(song)
+            },
+            'acessar_site': {
+                'keywords': ['site'],
+                'action': lambda site: self.api_handler.webbrowser.get().open(f'https://www.{"-".join(site.split())}.com')
+            },
+            'pesquisa_youtube': {
+                'keywords': ['youtube', 'YouTube'],
+                'action': lambda video: self.api_handler.youtube_search(prompt.split('youtube')[-1])
             },
             'pesquisa_google': {
                 'keywords': ['google', 'Google'],
                 'action': lambda search: self.api_handler.google_search(search)
             },
             'pesquisa_wikipedia': {
-                'keywords': ['wikipedia', 'Wikipédia', 'wiki'],
-                'action': lambda word: self.api_handler.fetch_wikipedia_info(word)
+                'keywords': ['wikipedia', 'Wikipédia'],
+                'action': lambda word: self.api_handler.wikipedia_search(word)
             },
             'traducao': {
-                'keywords': ['traduza', 'traduz', 'tradução'],
+                'keywords': ['traduza'],
                 'action': lambda phrase: self.api_handler.translate(phrase)
-            },
-            'chat': {
-                'keywords': ['chat', 'chatgpt', 'chat gpt'],
-                'action': lambda term: self.api_handler.chat_with_gpt(term)
             }
         }
-        
+
         for action, data in actions.items():
-            if engine_check(data['keywords'], prompt):  # Verificando se a entrada contém as palavras-chave
-                logging.info(f"Termo solicitado: {prompt}")
+            if engine_check(data['keywords'], prompt):
                 if 'responses' in data:
-                    # Se houver respostas, escolhe uma aleatória e fala
                     if isinstance(data['responses'], list):
                         response = random.choice(data['responses'])
                     else:
-                        state_response = prompt.lower().split(data['keywords'][0])[1].strip() if data['keywords'][0] in prompt.lower() else ''
+                        state_response = prompt.split(data['keywords'][0])[1].strip().lower()
                         response = data['responses'].get(state_response, 'Desculpe, não entendi.')
                     self.engine_speak(response)
-                    logging.info(f"ASSISTENTE DIZ:: {response}")
                 if 'action' in data:
                     if not self.actions:
-                        term = prompt.split(data['keywords'][-1])[-1].strip()
+                        term = prompt.split(data['keywords'][-1])[-1].strip()  # Obtém o texto após o último keyword
                         self.engine_speak(data['action'](term))
                         self.actions = True
                     else:
@@ -177,10 +173,12 @@ class Engine:
                         data.clear()
                         self.actions = False
                         return
+                if action == 'saudacao':
+                    self.greeting_exists = True
                 if action == 'desligar':
                     logging.info("Sistema sendo encerrado")
                     pygame.quit()
-                    sys.exit()
+                    exit()
                 break
-        else:
+
             logging.info("Aguardando próxima entrada do usuário...")

@@ -1,37 +1,51 @@
 # app/api/api.py
+
+from dotenv import load_dotenv
+from openai import OpenAI
+import os
+import logging
 import wikipedia
 import webbrowser
 from translatepy import Translator
 import yt_dlp
-import logging
-from dotenv import load_dotenv
-import openai
-import os
 
 # Carrega as variáveis do arquivo .env
 load_dotenv()
 
-openai.api_key = os.getenv("OPENAI_API_KEY")
-logging.info(f"CHAVE CHATGPT: {openai.api_key}")
+client = OpenAI(
+    api_key=os.environ.get("OPENAI_API_KEY"),
+)
 
 class APIHandler:
     def __init__(self):
         wikipedia.set_lang('pt')
         self.openai_api_key = os.getenv("OPENAI_API_KEY")
-        openai.api_key = self.openai_api_key
+        logging.info(f"CLIENT: {client}")
+        logging.info(f"CHAVE CHATGPT: {self.openai_api_key}")
         
-    def chat_with_gpt(self, prompt):
+    def chat_with_gpt(self, user_prompt):
         try:
-            response = openai.completions.create(
-                model="gpt-4",  # Ou qualquer modelo que você queira usar
-                prompt=prompt,  # Passando o prompt diretamente
-                max_tokens=150
+            response = client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {
+                        "role": "user",
+                        "content": [
+                            {"type": "text", "text": user_prompt},
+                        ],
+                    }
+                ],
             )
-            logging.info(f"RESPOSTA CHATGPT: {response}")
-            return response['choices'][0]['text'].strip()  # Acessando a resposta correta
+            
+            # Captura a resposta do modelo
+            message = response['choices'][0]['message']['content'].strip()
+            logging.info(f"RESPOSTA GPT: {message}")
+            return message
+        
         except Exception as e:
-            logging.error(f"Erro ao se comunicar com o ChatGPT: {e}")
-            return "Desculpe, ocorreu um erro ao processar sua solicitação."
+            logging.error(f"Erro ao comunicar-se com o ChatGPT: {e}")
+            return "Ocorreu um erro ao processar sua solicitação. Tente novamente mais tarde."
+
     
     def fetch_wikipedia_info(self, query):
         try:

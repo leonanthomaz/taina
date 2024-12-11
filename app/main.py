@@ -1,3 +1,4 @@
+# app/main.py
 from app.system_controller import SystemController
 
 def main():

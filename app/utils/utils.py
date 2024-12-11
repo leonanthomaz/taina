@@ -1,4 +1,5 @@
 # app/utils/utils.py
+import logging
 import time
 import re
 
@@ -15,12 +16,11 @@ def get_greeting():
     else:
         return 'Boa noite'
 
-def engine_check(terms, voice_data):
-    """
-    Função para identificar se o termo existe na fala do usuário
-    """
-    for term in terms:
-        if term in voice_data:
+def engine_check(keywords, prompt):
+    prompt = prompt.lower().strip()  # Remover espaços extras e converter para minúsculas
+    for keyword in keywords:
+        if keyword in prompt:
+            logging.info(f"Encontrado termo chave: {keyword} na entrada: {prompt}")
             return True
     return False
 
