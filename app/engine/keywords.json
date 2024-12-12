@@ -1,18 +1,59 @@
 {
-    "greetings": [
-        {
-            "keywords": ["oi", "olá", "bom dia"],
-            "responses": ["Oi! Como posso ajudar?", "Olá! Em que posso ser útil hoje?", "Bom dia! O que gostaria de fazer agora?"]
-        },
-        {
-            "keywords": ["boa tarde", "boa noite"],
-            "responses": ["Boa tarde!", "Boa noite! Espero que esteja bem. Como posso ajudar?"]
-        }
-    ],
-    "farewells": [
-        {
-            "keywords": ["tchau", "adeus", "até mais"],
-            "responses": ["Até logo!", "Tchau! Tenha um ótimo dia!", "Até a próxima!"]
-        }
-    ]
-}
+    "saudacao": {
+      "keywords": ["bom dia", "boa tarde", "boa noite", "oi", "olá", "hello"],
+      "responses": [
+        "Fala {user_name}, tranquilo?",
+        "Beleza, {user_name}? Como você está hoje?",
+        "De boinha, {user_name}?",
+        "Oi chefe {user_name}! Bom te ver de novo!",
+        "Olá {user_name}! Estou disponível!",
+        "Como vai, senhor? Tem algo que eu possa fazer?"
+      ]
+    },
+    "estado": {
+      "keywords": ["tô", "estou"],
+      "responses": {
+        "boa": "Que beleza, senhor! Aguarde um instante...",
+        "bem": "Que bom chefe! Vamos em frente! Aguarde um instante...",
+        "mal": "Relaxa senhor, vai melhorar... Vamos prosseguir? Aguarde um instante...",
+        "pensando": "Ok, estou aguardando..."
+      }
+    },
+    "parar": {
+      "keywords": ["parar", "pausar", "encerrar", "fechar", "acabar"],
+      "responses": ["Certo, senhor..."]
+    },
+    "continuar": {
+      "keywords": ["quero continuar", "continue", "prossiga", "vamos continuar"],
+      "responses": ["Ok, senhor. Vamos continuar..."]
+    },
+    "continuar_conversa": {
+      "keywords": ["vamos continuar"],
+      "responses": ["Pode falar, chefe..."]
+    },
+    "desligar": {
+      "keywords": ["sair", "desligar", "finalizar", "cala a boca", "ja deu", "pode dormir"],
+      "responses": ["Desligando o sistema..."]
+    },
+    "tocar_musica": {
+      "keywords": ["toque", "pedrada", "toca"],
+      "action": "play_music"
+    },
+    "pesquisa_google": {
+      "keywords": ["google", "Google"],
+      "action": "google_search"
+    },
+    "pesquisa_wikipedia": {
+      "keywords": ["wikipedia", "Wikipédia", "wiki"],
+      "action": "fetch_wikipedia_info"
+    },
+    "traducao": {
+      "keywords": ["traduza", "traduz", "tradução"],
+      "action": "translate"
+    },
+    "chat": {
+      "keywords": ["chat", "chatgpt", "chat gpt"],
+      "action": "chat_with_gpt"
+    }
+  }
+  

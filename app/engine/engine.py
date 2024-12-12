@@ -69,6 +69,7 @@ class Engine:
 
     def engine_record_audio(self, prompt):
         logging.info("Iniciando engine_record_audio com o prompt: %s", prompt)
+        
         self.engine_speak(prompt)
         recognizer = sr.Recognizer()
 
@@ -80,7 +81,7 @@ class Engine:
             # print("Dispositivos de entrada disponíveis:", sr.Microphone.list_microphone_names())
 
             try:
-                audio = recognizer.listen(source, timeout=10, phrase_time_limit=15)
+                audio = recognizer.listen(source, timeout=5, phrase_time_limit=8)
                 logging.info("Áudio capturado com sucesso")
                 return recognizer.recognize_google(audio, language="pt-BR")
             except sr.WaitTimeoutError:
@@ -90,13 +91,35 @@ class Engine:
             except sr.RequestError as e:
                 logging.error("Erro no serviço de reconhecimento de fala: %s", e)
         return None
-
+    
+    def is_assistant_interaction(self, prompt):
+        """
+        Verifica se a entrada do usuário é uma interação direta com a assistente.
+        """
+        keywords = [
+            'bom dia', 'boa tarde', 'boa noite', 'oi', 'olá', 'hello',
+            'tô', 'estou', 'parar', 'pausar', 'encerrar', 'fechar', 'acabar',
+            'quero continuar', 'continue', 'prossiga', 'vamos continuar',
+            'sair', 'desligar', 'finalizar', 'cala a boca', 'já deu', 'pode dormir'
+        ]
+        return engine_check(keywords, prompt)
+               
     def engine_response(self, prompt):
-        """
-        Responde à entrada de voz com base nas palavras-chave detectadas.
-        """
         logging.info("Analisando prompt: %s", prompt)
-        actions = {
+        actions = self.get_actions()
+
+        for action, data in actions.items():
+            if engine_check(data['keywords'], prompt):
+                logging.info(f"Termo solicitado: {prompt}")
+                self.execute_response(data, prompt)
+                if action == 'desligar':
+                    self.shutdown()
+                break
+        else:
+            logging.info("Aguardando próxima entrada do usuário...")
+
+    def get_actions(self):
+        return {
             'saudacao': {
                 'keywords': ['bom dia', 'boa tarde', 'boa noite', 'oi', 'olá', 'hello'],
                 'responses': [
@@ -154,33 +177,34 @@ class Engine:
                 'action': lambda term: self.api_handler.chat_with_gpt(term)
             }
         }
-        
-        for action, data in actions.items():
-            if engine_check(data['keywords'], prompt):  # Verificando se a entrada contém as palavras-chave
-                logging.info(f"Termo solicitado: {prompt}")
-                if 'responses' in data:
-                    # Se houver respostas, escolhe uma aleatória e fala
-                    if isinstance(data['responses'], list):
-                        response = random.choice(data['responses'])
-                    else:
-                        state_response = prompt.lower().split(data['keywords'][0])[1].strip() if data['keywords'][0] in prompt.lower() else ''
-                        response = data['responses'].get(state_response, 'Desculpe, não entendi.')
-                    self.engine_speak(response)
-                    logging.info(f"ASSISTENTE DIZ:: {response}")
-                if 'action' in data:
-                    if not self.actions:
-                        term = prompt.split(data['keywords'][-1])[-1].strip()
-                        self.engine_speak(data['action'](term))
-                        self.actions = True
-                    else:
-                        self.engine_speak('Limpando dados de pesquisa...')
-                        data.clear()
-                        self.actions = False
-                        return
-                if action == 'desligar':
-                    logging.info("Sistema sendo encerrado")
-                    pygame.quit()
-                    sys.exit()
-                break
+
+    def execute_response(self, data, prompt):
+        if 'responses' in data:
+            response = self.get_response(data, prompt)
+            self.engine_speak(response)
+            logging.info(f"ASSISTENTE DIZ:: {response}")
+        if 'action' in data:
+            self.perform_action(data, prompt)
+
+    def get_response(self, data, prompt):
+        if isinstance(data['responses'], list):
+            return random.choice(data['responses'])
         else:
-            logging.info("Aguardando próxima entrada do usuário...")
+            state_response = prompt.lower().split(data['keywords'][0])[1].strip() if data['keywords'][0] in prompt.lower() else ''
+            return data['responses'].get(state_response, 'Desculpe, não entendi.')
+
+    def perform_action(self, data, prompt):
+        if not self.actions:
+            term = prompt.split(data['keywords'][-1])[-1].strip()
+            self.engine_speak(data['action'](term))
+            self.actions = True
+        else:
+            self.engine_speak('Limpando dados de pesquisa...')
+            data.clear()
+            self.actions = False
+
+    def shutdown(self):
+        logging.info("Sistema sendo encerrado")
+        pygame.quit()
+        sys.exit()
+
